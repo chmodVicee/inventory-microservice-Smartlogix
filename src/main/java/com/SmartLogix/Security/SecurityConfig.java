@@ -24,11 +24,10 @@ public class SecurityConfig {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        // 1. Dejamos pasar el bulk-add libremente (El BFF ya validó el token en la entrada general)
                         .requestMatchers(HttpMethod.POST, "/api/inventory/bulk-add").permitAll()
-                        .requestMatchers("/api/inventory/bulk-add").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/inventory/update").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/inventory/{productoCodigo}/{almacenCodigo}").permitAll()
 
-                        // 2. El resto de las rutas siguen requiriendo token por seguridad
                         .requestMatchers("/api/inventory/**").authenticated()
                         .anyRequest().authenticated()
                 )
