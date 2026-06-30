@@ -46,4 +46,18 @@ public class InventoryService {
 
         return repository.save(inventory);
     }
+
+    public Inventory updateById(Long id, Inventory request) {
+        if (request.getStock() < 0) {
+            throw new IllegalArgumentException("El stock no puede ser negativo");
+        }
+        Inventory inventory = repository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("No se encontro inventario con id: " + id));
+
+        inventory.setProductoCodigo(request.getProductoCodigo());
+        inventory.setAlmacenCodigo(request.getAlmacenCodigo());
+        inventory.setStock(request.getStock());
+
+        return repository.save(inventory);
+    }
 }
