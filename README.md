@@ -1,34 +1,149 @@
-# Smartlogixs - Plataforma Inteligente para la Gestión Logística de eCommerce
+# Inventory Microservice — SmartLogix
 
-*Smartlogix* necesita desarrollar una solución basada en microservicios, la cual debe tener dos capas: **Frontend** moderno, flexible y **Backend** escalable y seguro.
+Microservicio encargado de gestionar el stock de productos por almacén. Es consultado y actualizado automáticamente por el microservicio de Orders cada vez que se crea un pedido.
 
-Permitiendo que las PYMEs puedan gestionar sus operaciones logísticas con una mayor eficiencia y reducir los costos operativos.
-Es por esto que la solución debe contemplar 3 módulos principales:
-- **Gestión de Inventario**: Tiene que estar actualizado en tiempo real los niveles de stock, optimizando la sincronización entre las multiples bodegas y tiendas.
-- **Procesamiento de Pedidos**: Automatizar la validación, aprobación y asignación de pedidos, mejorando la trazabilidad reduciendo errores.
-- **Coordinación de Envíos**: Mejorar la comunicación con los transportistas y la planificación de las rutas, mejorando los tiempos de entrega.
+## Datos técnicos
 
-## Requisitos Tecnicos
-Diseña una arquitectura de **Microservicios escalable**, con **patrones de diseño y arquetipos arquitectónicos** los cuales permitan modularizar el sistema:
-- **Definir los microservicios clave**, asegurando la separación de responsabilidades y escalabilidad.
-- Diseñar una **API Gateway** que pueda gestionar la comunicación entre los microservicios y el frontend.
-- Implementar patrones como **Repository Pattern** para la persistencia de datos, **Factory Method** para la creación de instancias y **Circuit Braker** para manejar fallos en la comunicación entre servicios.
-- Asegurar que los microservicios sean **escalables y desacoplados**, permitiendo futuras mejoras sin afectar el funcionamiento del sistema.
+| Campo | Valor |
+|---|---|
+| Puerto | `8082` |
+| Base de datos | `inventory_db` (MySQL) |
+| Autenticación | JWT (Bearer Token — emitido por Users MS) |
 
-## Comprobar el funcionamiento del backend + base de datos
-Ejecutar la aplicación desde el IDE o desde la consola con: `./mvnw spring-boot:run`.
-Una vez el backend esté ejecutandose, procedemos a ingresar a Postman para hacerle peticion POST a este y comprobar su funcionamiento:
-- `POST: http://localhost:8080/api/inventory/add`
+## Modelo de datos
 
-Con la siguiente estructura en formato JSON:
-```
+```json
 {
-    "productoCodigo":"",
-    "almacenCodigo":"",
-    "stock":{number}
+  "id": 1,
+  "productoCodigo": "PROD-001",
+  "almacenCodigo": "ALM-A",
+  "stock": 100
 }
 ```
-Una vez nos haya entregado un _201 Created_ haremos la comprobación de este con la petición:
-- `GET: http://localhost:8080/api/inventory/all`
 
-Este GET nos devolverá todas las ordenes que haya en el inventario.
+## Endpoints (todos requieren JWT)
+
+| Método | Ruta | Descripción |
+|---|---|---|
+| GET | `/api/inventory/all` | Listar todo el inventario |
+| GET | `/api/inventory/{productoCodigo}/{almacenCodigo}` | Stock de un producto en un almacén |
+| POST | `/api/inventory/add` | Agregar un producto al inventario |
+| POST | `/api/inventory/bulk-add` | Agregar múltiples productos a la vez |
+| POST | `/api/inventory/update` | Actualizar stock de un producto |
+| PUT | `/api/inventory/{id}` | Editar un registro completo por ID |
+
+---
+
+## Pruebas en Postman
+
+> Todas las peticiones requieren el header:
+> `Authorization: Bearer <token>`
+>
+> Obtén el token primero desde el Users MS (`POST http://localhost:8083/api/auth/login`) o desde el BFF (`POST http://localhost:8080/api/auth/login`).
+
+### 1. Listar todo el inventario
+
+```
+GET http://localhost:8082/api/inventory/all
+Authorization: Bearer <token>
+```
+
+**Respuesta esperada (200):**
+```json
+[
+  { "id": 1, "productoCodigo": "PROD-001", "almacenCodigo": "ALM-A", "stock": 100 },
+  { "id": 2, "productoCodigo": "PROD-002", "almacenCodigo": "ALM-B", "stock": 50 }
+]
+```
+
+---
+
+### 2. Consultar stock de un producto en un almacén
+
+```
+GET http://localhost:8082/api/inventory/PROD-001/ALM-A
+Authorization: Bearer <token>
+```
+
+**Respuesta esperada (200):**
+```json
+{ "id": 1, "productoCodigo": "PROD-001", "almacenCodigo": "ALM-A", "stock": 100 }
+```
+
+---
+
+### 3. Agregar producto al inventario
+
+```
+POST http://localhost:8082/api/inventory/add
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "productoCodigo": "PROD-001",
+  "almacenCodigo": "ALM-A",
+  "stock": 100
+}
+```
+
+**Respuesta esperada (201):**
+```json
+{ "id": 1, "productoCodigo": "PROD-001", "almacenCodigo": "ALM-A", "stock": 100 }
+```
+
+---
+
+### 4. Agregar múltiples productos (bulk)
+
+```
+POST http://localhost:8082/api/inventory/bulk-add
+Authorization: Bearer <token>
+Content-Type: application/json
+
+[
+  { "productoCodigo": "PROD-001", "almacenCodigo": "ALM-A", "stock": 100 },
+  { "productoCodigo": "PROD-002", "almacenCodigo": "ALM-B", "stock": 50 }
+]
+```
+
+---
+
+### 5. Actualizar stock de un producto
+
+```
+POST http://localhost:8082/api/inventory/update
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "productoCodigo": "PROD-001",
+  "almacenCodigo": "ALM-A",
+  "stock": 85
+}
+```
+
+---
+
+### 6. Editar registro completo por ID
+
+```
+PUT http://localhost:8082/api/inventory/1
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "productoCodigo": "PROD-001",
+  "almacenCodigo": "ALM-A",
+  "stock": 200
+}
+```
+
+---
+
+## Cómo levantar
+
+```bash
+./mvnw spring-boot:run
+```
+
+Requiere MySQL corriendo en `localhost:3306` con usuario `root` / contraseña `root`. La base de datos `inventory_db` se crea automáticamente al iniciar.
